@@ -198,7 +198,7 @@ app.registerExtension({
 
                     // Build the src URL based on path type
                     let audioSrc;
-                    const isAbsolute = p.match(/^[a-zA-Z]:\\/) || p.startsWith('/');
+                    const isAbsolute = (p.length >= 2 && p[1] === ':') || p.startsWith('/');
                     if (isAbsolute) {
                         audioSrc = api.apiURL(`/video_ui_custom_view?filename=${encodeURIComponent(p)}`);
                         playerTitle.textContent = p.split(/[\/\\]/).pop();

@@ -183,8 +183,9 @@ app.registerExtension({
                     }
                     let url;
 
-                    // Check if absolute path (Starts with C:\ or /)
-                    if (filename.match(/^[a-zA-Z]:\\/) || filename.startsWith('/')) {
+                    // Reliable absolute-path detection: Windows drive letter OR Unix root
+                    const isAbsolute = (filename.length >= 2 && filename[1] === ':') || filename.startsWith('/');
+                    if (isAbsolute) {
                         url = api.apiURL(`/video_ui_custom_view?filename=${encodeURIComponent(filename)}`);
                     } else {
                         url = api.apiURL(`/view?filename=${encodeURIComponent(filename)}&type=input`);
@@ -202,22 +203,58 @@ app.registerExtension({
                 }
 
                 // ====================================================================
-                // onExecuted: update preview when path comes from LocalMedia Manager
-                // Python returns ui.video_path with the actual path used for loading
+                // applyVideoPath: core preview updater, defined in closure where
+                // videoPreview and videoWidget are accessible directly.
+                // Called by both api listener and node.onExecuted.
                 // ====================================================================
+                const applyVideoPath = (rawPath) => {
+                    if (!rawPath || !rawPath.trim()) return;
+                    const p = rawPath.trim();
+
+                    const isNewFile = (p !== node._lastLoadedVideoPath);
+                    node._lastLoadedVideoPath = p;
+
+                    // Sync video widget value
+                    if (videoWidget) videoWidget.value = p;
+
+                    // Only reload preview when file actually changes
+                    if (isNewFile) {
+                        if (node.updatePreview) node.updatePreview(p);
+                        // Reset timeline to start when switching files
+                        if (startTimeWidget) startTimeWidget.value = 0;
+                        if (endTimeWidget) endTimeWidget.value = 0;
+                        if (node.syncFramesFromTime) node.syncFramesFromTime();
+                    }
+                };
+
+                // Primary: api event listener (more reliable than node.onExecuted alone)
+                const _videoExecHandler = ({ detail }) => {
+                    if (!detail || String(detail.node) !== String(node.id)) return;
+                    const out = detail.output;
+                    if (out && out.video_path && out.video_path.length) {
+                        applyVideoPath(out.video_path[0]);
+                    }
+                };
+                api.addEventListener("executed", _videoExecHandler);
+
+                // Cleanup listener when node is removed
+                const _videoOrigRemoved = node.onRemoved;
+                node.onRemoved = function () {
+                    api.removeEventListener("executed", _videoExecHandler);
+                    if (_videoOrigRemoved) _videoOrigRemoved.apply(this, arguments);
+                };
+
+                // Fallback: node.onExecuted for ComfyUI versions that call it directly
                 node.onExecuted = function (output) {
                     if (output && output.video_path && output.video_path.length > 0) {
-                        const pathValue = output.video_path[0];
-                        if (pathValue && pathValue.trim()) {
-                            if (videoWidget) videoWidget.value = pathValue.trim();
-                            if (node.updatePreview) node.updatePreview(pathValue.trim());
-                        }
+                        applyVideoPath(output.video_path[0]);
                     }
                 };
 
                 // Initialize widget visibility right away
                 if (displayModeWidget && !displayModeWidget.value) displayModeWidget.value = "seconds";
                 node.toggleWidgetVisibility();
+
 
                 // ====================================================================
                 // CHOOSE FILE BUTTON (Native ComfyUI Widget, placed below duration)
