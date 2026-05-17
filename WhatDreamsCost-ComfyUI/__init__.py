@@ -6,6 +6,7 @@ from .load_audio_ui import LoadAudioUI
 from .load_video_ui import LoadVideoUI
 from .ltx_director import LTXDirector
 from .ltx_director_guide import LTXDirectorGuide
+from .video_info_parser import VideoInfoParser
 from comfy_api.latest import ComfyExtension, io
 from typing_extensions import override
 
@@ -29,6 +30,7 @@ NODE_CLASS_MAPPINGS = {
     "LoadVideoUI": LoadVideoUI,
     "LTXDirector": LTXDirector,
     "LTXDirectorGuide": LTXDirectorGuide,
+    "VideoInfoParser": VideoInfoParser,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -40,6 +42,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LoadVideoUI": "Load Video UI",
     "LTXDirector": "LTX Director",
     "LTXDirectorGuide": "LTX Director Guide",
+    "VideoInfoParser": "Video Info Parser",
 }
 
 WEB_DIRECTORY = "./js"
